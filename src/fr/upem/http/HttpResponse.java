@@ -1,17 +1,18 @@
-package fr.upem.Http;
+package fr.upem.http;
 
-import java.nio.channels.SocketChannel;
 
 public class HttpResponse {
 
-	private final SocketChannel sc;
+	private final String body;
+	private final HttpHeader header;
 
 	/**
 	 * Construct a new HttpResponse
 	 * @param sc the channel who is already connected
 	 */
-	HttpResponse(SocketChannel sc) {
-		this.sc = sc;
+	HttpResponse(HttpHeader header, String body) {
+		this.header = header;
+		this.body = body;
 	}
 	
 	/**

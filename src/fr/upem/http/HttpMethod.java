@@ -1,4 +1,4 @@
-package fr.upem.Http;
+package fr.upem.http;
 
 public enum HttpMethod {
 	POST,GET
