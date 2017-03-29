@@ -50,6 +50,11 @@ public class WorkerInfo {
 		WorkerInfo other = (WorkerInfo) obj;
 		return other.className.equals(className) && other.url.equals(url) && other.version.equals(version);
 	}
+
+	@Override
+	public String toString() {
+		return "WorkerInfo [version=" + version + ", url=" + url + ", className=" + className + "]";
+	}
 	
 	
 }

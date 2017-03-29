@@ -110,15 +110,30 @@ public class RequestBuilder {
 					.put(bodyBuffer);
 			buff.flip();
 		}
-		
+
 		sc.write(buff);
 		HttpReader httpReader = new HttpReader(sc, ByteBuffer.allocate(1024));
-		// TODO
-		
-
-
-		return null;
+		HttpHeader header = httpReader.readHeader();
+		String body = readBody(httpReader,header);
+		return new HttpResponse(header, body);
 	}
+
+
+
+	private String readBody(HttpReader httpReader, HttpHeader header) throws IOException {
+		ByteBuffer content = null;
+		if(header.isChunkedTransfer()){
+			content = httpReader.readChunks();
+		}
+		else{
+			content = httpReader.readBytes(header.getContentLength());
+		}
+		content.flip();
+		return header.getCharset().decode(content).toString();
+
+	}
+
+
 
 }
 

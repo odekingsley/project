@@ -1,6 +1,11 @@
 package fr.upem.worker;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.HashMap;
+import java.util.Optional;
 
 
 public class WorkerManager {
@@ -23,14 +28,38 @@ public class WorkerManager {
 		}
 	}
 	
-	private final URLClassLoader classLoader = new URLClassLoader(null);
 	
+	private final HashMap<WorkerInfo, Worker> map = new HashMap<>();
 	/**
 	 * Get the worker corresponding to the {@link WorkerInfo} and create it if not exist.
 	 * @return the corresponding {@link Worker}
 	 */
-	public Worker getOrCreate(WorkerInfo info){
+	public Optional<Worker> getOrCreate(WorkerInfo info){
+		Worker worker = map.get(info);
+		if(worker == null){
+			URL[] classLoaderUrls = new URL[]{info.getUrl()};
+			URLClassLoader classLoader = new URLClassLoader(classLoaderUrls);
+			Class<?> workerClass;
+			try {
+				workerClass = classLoader.loadClass(info.getClassName());
+				Constructor<?> constructor = workerClass.getConstructor();
+				Object object = constructor.newInstance();
+				worker = new Worker(workerClass, object);
+				map.put(info, worker);
+				
+			} catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
+				return Optional.empty();
+			}
+			
+			
+		}
 		
-		return null;
+		return Optional.of(worker);
+	}
+	
+	public static void main(String[] args) {
+		
 	}
 }
+
