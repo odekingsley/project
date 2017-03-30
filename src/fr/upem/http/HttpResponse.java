@@ -21,7 +21,7 @@ public class HttpResponse {
 	 */
 	public HttpHeader getHeader(){
 		
-		return null;
+		return header;
 	}
 	
 	
@@ -31,6 +31,6 @@ public class HttpResponse {
 	 */
 	public String getBody(){
 		
-		return null;
+		return body;
 	}
 }

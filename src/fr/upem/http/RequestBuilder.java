@@ -25,6 +25,7 @@ public class RequestBuilder {
 	private String body;
 	private Charset charset;
 	private String type;
+	
 
 
 	/**
@@ -69,10 +70,15 @@ public class RequestBuilder {
 	 * @return the {@link RequestBuilder}
 	 * @throws NullPointerException if body is null
 	 */
-	public RequestBuilder setBody(String body,String type,Charset charset){
+	public RequestBuilder appendBody(String body,String type,Charset charset){
 		this.body = body;
 		this.type = Objects.requireNonNull(type);
 		this.charset = Objects.requireNonNull(charset);
+		return this;
+	}
+	
+	public RequestBuilder appendBody(long val){
+		
 		return this;
 	}
 
