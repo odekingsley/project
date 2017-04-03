@@ -1,17 +1,22 @@
 package fr.upem.jarset;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
@@ -44,9 +49,10 @@ public class Client {
 	}
 
 	public Optional<Task> requestTask() throws IOException{
+		System.out.println("Demanding a task");
 		HttpResponse response = new RequestBuilder(HttpMethod.GET, sc).setResource("Task").response();
 		String body = response.getBody();
-
+		System.out.println("Response receive");
 		ObjectMapper mapper = new ObjectMapper();
 		TypeFactory factory = TypeFactory.defaultInstance();
 		MapType type = factory.constructMapType(HashMap.class, String.class, String.class);
@@ -54,6 +60,7 @@ public class Client {
 		String comeBack = map.get("ComeBackInSeconds");
 		if(comeBack != null){
 			try {
+				System.out.println("have to wait :"+comeBack);
 				wait(Integer.parseInt(comeBack));
 				return Optional.empty();
 			} catch (NumberFormatException e) {
@@ -73,42 +80,56 @@ public class Client {
 
 	}
 
-	public void manageTask(Task task){
+	public boolean manageTask(Task task){
+		System.out.println("Managing a task");
+		System.out.println("Getting the worker");
 		Optional<Worker> optional = manager.getOrCreate(task.getInfo());
 		if(! optional.isPresent()){
-			return;
+			return false;
 		}
+		System.out.println("Get the worker");
 		Worker worker = optional.get();
 		try {
-			
-			Method method = worker.getWorkerClass().getMethod("compute", Integer.class);
-			String result = method.invoke(worker.getWorker(), task.getTask()).toString();
+			Method method = worker.getWorkerClass().getMethod("compute",Integer.TYPE);
+			System.out.println("Invoking the methode");
+			String result = method.invoke(worker.getWorker(),(int)task.getTask()).toString();
 			ObjectMapper mapper = new ObjectMapper();
-			Answer answer = mapper.readValue(result, Answer.class);
+			System.out.println("decoding the result :"+result);
+			Map<String, Object> answer = mapper.readValue(result, new TypeReference<Map<String, Object>>() {});
 			// TODO champs de type object
 			JsonAnswer jsonAnswer = new JsonAnswer(task, clientId, answer);
+			System.out.println("Encoding the answer");
 			String body = mapper.writeValueAsString(jsonAnswer);
-			new RequestBuilder(HttpMethod.POST, sc);
+			System.out.println("sending the response");
+			int code = new RequestBuilder(HttpMethod.POST, sc)
+			.setBody(task.getJobId(), (int)task.getTask(), body, Charset.forName("utf-8"))
+			.setResource("Answer")
+			.response().getHeader().getCode();
+			System.out.println(code);
+			return code == 200;
 		} catch (NoSuchMethodException e) {
 			e.printStackTrace();
-			return;
+			return false;
 		} catch (InvocationTargetException e) {
 			computationError(task);
 			e.printStackTrace();
-			return;
+			return false ;
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
-			return;
+			return false;
 		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
-			return;
+			return false;
 		} catch (JsonParseException e) {
 			e.printStackTrace();
+			return false;
 		} catch (JsonMappingException e) {
 			notValidJson();
 			e.printStackTrace();
+			return false;
 		} catch (IOException e) {
 			e.printStackTrace();
+			return false;
 		}
 	}
 
@@ -119,6 +140,26 @@ public class Client {
 
 	private void computationError(Task task) {
 		// TODO Auto-generated method stub
+		
+	}
+	
+	public void close() throws IOException {
+		sc.close();
+
+	}
+	
+	public static void main(String[] args) throws IOException {
+		Client client = create(new InetSocketAddress("ns3001004.ip-5-196-73.eu",8080), "kking");
+	Optional<Task> optional = Optional.empty();
+	while(! optional.isPresent()){
+		System.out.println("Ask a Task");
+		optional = client.requestTask();
+	}
+	
+	System.out.println(client.manageTask(optional.get()));
+	
+	client.close();
+
 		
 	}
 }

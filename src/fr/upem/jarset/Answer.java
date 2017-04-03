@@ -7,14 +7,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 @JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY)
 public class Answer {
 	@JsonProperty("Prime")
-	private final boolean prime;
+	private boolean prime;
 	
 	@JsonProperty("Facteur")
-	private final int facteur;
+	private int facteur;
 	
-	public Answer(boolean prime, int facteur) {
-		this.prime = prime;
-		this.facteur = facteur;
-	}
 	
 }

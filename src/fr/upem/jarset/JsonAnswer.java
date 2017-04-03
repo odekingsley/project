@@ -1,6 +1,7 @@
 package fr.upem.jarset;
 
 import java.net.URL;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,10 +29,10 @@ public class JsonAnswer {
 	private final String clientId;
 	
 	@JsonProperty("Answer")
-	private final Answer answer;
+	private final Map<String,Object> answer;
 	
 	
-	public JsonAnswer(Task task,String clientId,Answer answer) {
+	public JsonAnswer(Task task,String clientId,Map<String,Object> answer) {
 		this.clientId = clientId;
 		this.answer = answer;
 		jobId = task.getJobId();

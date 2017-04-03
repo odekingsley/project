@@ -47,7 +47,7 @@ public class RequestBuilderTest {
 
 	@Test
 	public void testSetBody() {
-		new RequestBuilder(HttpMethod.GET, sc).appendBody("body","text/plain",Charset.forName("utf-8"));
+		new RequestBuilder(HttpMethod.GET, sc).setBody(0, 0, "", Charset.forName("UTF-8"));
 	}
 
 	@Test

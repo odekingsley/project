@@ -1,6 +1,7 @@
 package fr.upem.http;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
@@ -12,7 +13,7 @@ import java.util.Objects;
 
 
 public class RequestBuilder {
-	static final Charset charsetASCII ;
+	private static final Charset charsetASCII ;
 
 	static{
 		charsetASCII = Charset.forName("ASCII");
@@ -22,10 +23,9 @@ public class RequestBuilder {
 	private final SocketChannel sc;
 	private final Map<String, String> headers =  new HashMap<>();
 	private String ressource;
-	private String body;
+	private final ByteBuffer bodBuffer =ByteBuffer.allocate(4096);
+	private String charsetName;
 	private Charset charset;
-	private String type;
-	
 
 
 	/**
@@ -64,21 +64,17 @@ public class RequestBuilder {
 		return this;
 	}
 
-	/**
-	 * Set the body of the request
-	 * @param body the body of the request
-	 * @return the {@link RequestBuilder}
-	 * @throws NullPointerException if body is null
-	 */
-	public RequestBuilder appendBody(String body,String type,Charset charset){
-		this.body = body;
-		this.type = Objects.requireNonNull(type);
-		this.charset = Objects.requireNonNull(charset);
-		return this;
-	}
 	
-	public RequestBuilder appendBody(long val){
+	
+	public RequestBuilder setBody(long jobId,int task,String string,Charset charset){
+		this.charset = charset;
+		bodBuffer.clear();
 		
+		charsetName = charset.name();
+		
+		bodBuffer.putLong(jobId);
+		bodBuffer.putInt(task);
+		bodBuffer.put(charset.encode(string));
 		return this;
 	}
 
@@ -90,15 +86,19 @@ public class RequestBuilder {
 	 * @throws ClosedChannelException if the channel is closed
 	 */
 	public HttpResponse response() throws IOException{
-
+		bodBuffer.flip();
 		StringBuilder sb = new StringBuilder();
 		sb.append(method)
 		.append(" ")
 		.append(ressource == null ? "/" : ressource)
 		.append(" HTTP/1.1\r\n")
-		.append("");
-		if(body != null){
-			headers.put("Content-type", "application/json; charset="+charset.name()+"\r\n");
+		.append("Host: ")
+		.append(((InetSocketAddress)sc.getRemoteAddress()).getHostString())
+		.append("\r\n");
+		
+		if(bodBuffer.hasRemaining()){
+			headers.put("Content-type", "application/json");
+			headers.put("Content-length", Integer.toString(bodBuffer.remaining()));
 		}
 		for(Entry <String,String> entry : headers.entrySet()){
 			sb.append(entry.getKey());
@@ -108,16 +108,21 @@ public class RequestBuilder {
 		}
 		sb.append("\r\n");
 		ByteBuffer buff = charsetASCII.encode(sb.toString());
-
-		if(body == null){
-			ByteBuffer bodyBuffer = charset.encode(body);
-			buff = ByteBuffer.allocate(buff.remaining() + bodyBuffer.remaining())
-					.put(buff)
-					.put(bodyBuffer);
-			buff.flip();
+		System.out.println(sb.toString());
+		System.out.println("octe send for header :"+sc.write(buff));
+		
+		if(bodBuffer.hasRemaining()){
+			//System.out.println(bodBuffer.getLong());
+			//System.out.println(bodBuffer.getInt());
+			System.out.println(charset.decode(bodBuffer));
+			bodBuffer.flip();
+			//buff = ByteBuffer.allocate(buff.remaining() + bodBuffer.remaining())
+					//.put(buff)
+					//.put(bodBuffer);
+			System.out.println("octet send for body : "+sc.write(bodBuffer));
 		}
 
-		sc.write(buff);
+		
 		HttpReader httpReader = new HttpReader(sc, ByteBuffer.allocate(1024));
 		HttpHeader header = httpReader.readHeader();
 		String body = readBody(httpReader,header);
@@ -132,7 +137,11 @@ public class RequestBuilder {
 			content = httpReader.readChunks();
 		}
 		else{
-			content = httpReader.readBytes(header.getContentLength());
+			int contentLength = header.getContentLength();
+			if(contentLength == -1){
+				return "";
+			}
+			content = httpReader.readBytes(contentLength);
 		}
 		content.flip();
 		return header.getCharset().decode(content).toString();

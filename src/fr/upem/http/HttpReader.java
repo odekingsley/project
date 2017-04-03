@@ -107,7 +107,7 @@ class HttpReader {
 			line = readLineCRLF();
 		}
 		
-		return HttpHeader.create(response, map);
+		return HttpResponseHeader.create(response, map);
 	}
 
 	/**

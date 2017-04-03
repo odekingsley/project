@@ -18,12 +18,12 @@ public class HttpResponseTest {
 	}
 	
 	public void testHttpResponse() throws HttpException {
-		new HttpResponse(HttpHeader.create("HTTP/1.1", new HashMap<String,String>()), "body");
+		new HttpResponse(HttpResponseHeader.create("HTTP/1.1", new HashMap<String,String>()), "body");
 	}
 
 	@Test
 	public void testGetHeader() throws HttpException {
-		HttpHeader header = HttpHeader.create("HTTP/1.1 200 OK", new HashMap<String,String>());
+		HttpHeader header = HttpResponseHeader.create("HTTP/1.1 200 OK", new HashMap<String,String>());
 		HttpResponse httpResponse = new HttpResponse(header, "body");
 		assertEquals(header, httpResponse.getHeader());
 		
@@ -31,7 +31,7 @@ public class HttpResponseTest {
 
 	@Test
 	public void testGetBody() throws HttpException {
-		HttpResponse httpResponse = new HttpResponse(HttpHeader.create("HTTP/1.1 200 OK", new HashMap<String,String>()), "body");
+		HttpResponse httpResponse = new HttpResponse(HttpResponseHeader.create("HTTP/1.1 200 OK", new HashMap<String,String>()), "body");
 		assertEquals("body", httpResponse.getBody());
 	}
 
