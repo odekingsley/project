@@ -9,6 +9,14 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+
+/**
+ * This class represent the header of an Http Request.
+ * It is contains of the method, the resource, the version, and the fields of
+ * the request.
+ * @author ode
+ *
+ */
 public class HttpRequestHeader extends HttpHeader {
 	
 	private static String LIST_SUPPORTED_METHOD[] = new String[]{"POST","GET"};
@@ -16,42 +24,61 @@ public class HttpRequestHeader extends HttpHeader {
 
 	private final String method;
 	private final String ressource;
+	private final String request;
 	
-    private HttpRequestHeader(String response,String version,int code,Map<String, String> fields,String method,String ressource) throws HttpException {
-    	super(response, version, code, fields);
+    private HttpRequestHeader(String request,String version,Map<String, String> fields,String method,String ressource) throws HttpException {
+    	super(version, fields);
+		this.request = request;
 		this.method = method;
 		this.ressource = ressource;
     	
     }
     
-    public static HttpRequestHeader create(String response, Map<String,String> fields) throws HttpException {
-        String[] tokens = response.split(" ");
-        // Treatment of the response line
-        ensure(tokens.length >= 2, "Badly formed request:\n" + response);
+    
+    /**
+     * Create an HttpRequestHeader.
+     * @param request the first line of the request like : "GET Task HTTP/1.1"
+     * @param fields the fields of the request.
+     * @return the HttpRequestHeader
+     * @throws HttpException if the request is badly formed or the method or the version is unsupported.
+     */
+    public static HttpRequestHeader create(String request, Map<String,String> fields) throws HttpException {
+        String[] tokens = request.split(" ");
+        ensure(tokens.length == 3, "Badly formed request:\n" + request);
         String method = tokens[0];
         String ressource = tokens[1];
         String version = tokens[2];
-        ensure(SUPPORTED_METHODS.contains(method), "Unsupported method in response:\n" + method);
-        ensure(HttpRequestHeader.SUPPORTED_VERSIONS.contains(version), "Unsupported version in response:\n" + response);
+        ensure(SUPPORTED_METHODS.contains(method), "Unsupported method in request:\n" + method);
+        ensure(HttpRequestHeader.SUPPORTED_VERSIONS.contains(version), "Unsupported version in request:\n" + request);
         
-        int code = 0;
-        try {
-            code = Integer.valueOf(tokens[1]);
-            ensure(code >= 100 && code < 600, "Invalid code in response:\n" + response);
-        } catch (NumberFormatException e) {
-            ensure(false, "Invalid response:\n" + response);
-        }
         Map<String,String> fieldsCopied = new HashMap<>();
         for (String s : fields.keySet())
             fieldsCopied.put(s,fields.get(s).trim());
-        return new HttpRequestHeader(response,version,code,fieldsCopied,method,ressource);
+        return new HttpRequestHeader(request,version,fieldsCopied,method,ressource);
     }
 
+    /**
+     * Get the resource of the request.
+     * @return the resource of the request
+     */
 	public String getRessource() {
 		return ressource;
 	}
 
+	/**
+	 * Get the method of the request.
+	 * @return the method of the request
+	 */
 	public String getMethod() {
 		return method;
+	}
+
+	
+	/**
+	 * Get the first line of the request
+	 * @return the first line of the request
+	 */
+	public String getRequest() {
+		return request;
 	}
 }

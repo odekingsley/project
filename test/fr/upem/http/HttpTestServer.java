@@ -5,9 +5,14 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
 
 public class HttpTestServer {
 
+	static class Data{
+		ByteBuffer bb;
+		HttpRequestHeader header;
+	}
 	private final ServerSocketChannel ssc;
 	private final ByteBuffer bb;
 
@@ -23,10 +28,22 @@ public class HttpTestServer {
 		
 	}
 	
-	public void serveOnce() throws IOException {
+	public Data post() throws IOException {
+		bb.clear();
 		SocketChannel sc = ssc.accept();
 		HttpReader reader = new HttpReader(sc, bb);
-		HttpHeader header = reader.readHeader();
+		Data data = new Data();
+		data.header = reader.readRequestHeader();
+		int contentLength = data.header.getContentLength();
+		data.bb = reader.readBytes(contentLength);
+		
+		return data;
+		
+	}
+	
 
+	public void close() throws IOException {
+		ssc.close();
+		
 	}
 }

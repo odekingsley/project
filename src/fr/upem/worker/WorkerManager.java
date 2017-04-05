@@ -1,5 +1,6 @@
 package fr.upem.worker;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
@@ -33,15 +34,15 @@ public class WorkerManager {
 	/**
 	 * Get the worker corresponding to the {@link WorkerInfo} and create it if not exist.
 	 * @return the corresponding {@link Worker}
+	 * @throws IOException 
 	 */
-	public Optional<Worker> getOrCreate(WorkerInfo info){
+	public Optional<Worker> getOrCreate(WorkerInfo info) throws IOException{
 		Worker worker = map.get(info);
 		if(worker == null){
+			
 			URL[] classLoaderUrls = new URL[]{info.getUrl()};
-			URLClassLoader classLoader = new URLClassLoader(classLoaderUrls);
-			Class<?> workerClass;
-			try {
-				workerClass = classLoader.loadClass(info.getClassName());
+			try (URLClassLoader classLoader = new URLClassLoader(classLoaderUrls)){
+				Class<?> workerClass = classLoader.loadClass(info.getClassName());
 				Constructor<?> constructor = workerClass.getConstructor();
 				Object object = constructor.newInstance();
 				worker = new Worker(workerClass, object);
@@ -53,13 +54,10 @@ public class WorkerManager {
 			}
 			
 			
+			
 		}
 		
 		return Optional.of(worker);
-	}
-	
-	public static void main(String[] args) {
-		
 	}
 }
 

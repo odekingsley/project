@@ -1,17 +1,25 @@
 package fr.upem.http;
 
+import java.util.Objects;
+import java.util.Optional;
 
+/**
+ * This class represent an Http response. 
+ * It contains an HttpResponseHeader and eventually a body.
+ * @author ode
+ */
 public class HttpResponse {
 
 	private final String body;
-	private final HttpHeader header;
+	private final HttpResponseHeader header;
 
 	/**
 	 * Construct a new HttpResponse
 	 * @param sc the channel who is already connected
+	 * @throws NullPointerException if the header is null
 	 */
-	HttpResponse(HttpHeader header, String body) {
-		this.header = header;
+	HttpResponse(HttpResponseHeader header, String body) {
+		this.header = Objects.requireNonNull(header);
 		this.body = body;
 	}
 	
@@ -19,7 +27,7 @@ public class HttpResponse {
 	 * Return the header of the response
 	 * @return the header of the response
 	 */
-	public HttpHeader getHeader(){
+	public HttpResponseHeader getHeader(){
 		
 		return header;
 	}
@@ -27,10 +35,10 @@ public class HttpResponse {
 	
 	/**
 	 * Return the body of the response 
-	 * @return the response
+	 * @return an optional which contains the response
 	 */
-	public String getBody(){
+	public Optional<String>	 getBody(){
 		
-		return body;
+		return Optional.ofNullable(body);
 	}
 }

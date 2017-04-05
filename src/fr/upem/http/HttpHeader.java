@@ -14,29 +14,21 @@ class HttpHeader {
 	 */
 	private static final String[] LIST_SUPPORTED_VERSIONS = new String[]{"HTTP/1.0", "HTTP/1.1", "HTTP/1.2"};
 	public static final Set<String> SUPPORTED_VERSIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(LIST_SUPPORTED_VERSIONS)));
-	protected final String response;
 	protected final String version;
-	protected final int code;
 	protected final Map<String, String> fields;
 
-	public HttpHeader(String response,String version,int code,Map<String, String> fields) {
-		this.response = response;
+	HttpHeader(String version,Map<String, String> fields) {
         this.version = version;
-        this.code = code;
         this.fields = Collections.unmodifiableMap(fields);
 	}
 
-	public String getResponse() {
-	    return response;
-	}
+	
 
 	public String getVersion() {
 	    return version;
 	}
 
-	public int getCode() {
-	    return code;
-	}
+	
 
 	public Map<String, String> getFields() {
 	    return fields;
@@ -99,10 +91,6 @@ class HttpHeader {
 	    return fields.containsKey("Transfer-Encoding") && fields.get("Transfer-Encoding").trim().equals("chunked");
 	}
 
-	public String toString() {
-	    return response + "\n"
-	            + version + " " + code + "\n"
-	            + fields.toString();
-	}
+	
 
 }

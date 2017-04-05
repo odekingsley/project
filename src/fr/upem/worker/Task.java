@@ -53,7 +53,31 @@ public class Task {
 		return jobId;
 	}
 	
+	 
 	
+	
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((info == null) ? 0 : info.hashCode());
+		result = prime * result + (int) (jobId ^ (jobId >>> 32));
+		result = prime * result + (int) (task ^ (task >>> 32));
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if ( !(obj instanceof Task))
+			return false;
+		Task other = (Task) obj;
+		return info.equals(other.info) && jobId == other.jobId && task == other.task;
+	}
 
 	@Override
 	public String toString() {
