@@ -9,9 +9,11 @@ import java.util.List;
 
 
 public class HttpReader {
+	
 	private static enum State{
 		Default,ReadR,EndLine
 	}
+	
 	private final Charset ASCII_CHARSET = Charset.forName("ASCII");
 	private final SocketChannel sc;
 	private final ByteBuffer buff;
@@ -108,6 +110,7 @@ public class HttpReader {
 		
 		return HttpResponseHeader.create(response, map);
 	}
+	
 	
 	public HttpRequestHeader readRequestHeader() throws IOException{
 		String request = readLineCRLF();

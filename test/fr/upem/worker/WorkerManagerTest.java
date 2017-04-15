@@ -3,13 +3,13 @@ package fr.upem.worker;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.Optional;
 
 import org.junit.Test;
 
-import fr.upem.worker.WorkerManager.Worker;
+import upem.jarret.worker.Worker;
 
 public class WorkerManagerTest {
 
@@ -19,17 +19,33 @@ public class WorkerManagerTest {
 	}
 	@Test
 	public void testGetOrCreate() throws IOException {
-		WorkerInfo workerInfo = new WorkerInfo("1.0", new URL("http://igm.univ-mlv.fr/~carayol/WorkerPrimeV1.jar"), "upem.workerprime.WorkerPrime");
-		Optional<Worker> optional = new WorkerManager().getOrCreate(workerInfo);
+		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
+		//WorkerInfo workerInfo = new WorkerInfo("1.0", url, "upem.jarret.worker.Normal");
+		Task task = new Task(1, 100, "1.0", url, "upem.jarret.worker.Normal");
+		Optional<Worker> optional = new WorkerManager().getOrCreate(task);
 		assertTrue(optional.isPresent());
 	}
 	
 	@Test
 	public void testGetOrCreateSame() throws IOException{
-		WorkerInfo workerInfo = new WorkerInfo("1.0", new URL("http://igm.univ-mlv.fr/~carayol/WorkerPrimeV1.jar"), "upem.workerprime.WorkerPrime");
+		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
+		Task task = new Task(1, 100, "1.0", url, "upem.jarret.worker.Normal");
 		WorkerManager manager = new WorkerManager();
-		Optional<Worker> optional = manager.getOrCreate(workerInfo);
-		assertEquals(optional.get(), manager.getOrCreate(workerInfo).get());
+		Optional<Worker> optional = manager.getOrCreate(task);
+		assertTrue(optional.get() == manager.getOrCreate(task).get());
+	}
+	
+	
+	@Test
+	public void testGetOrCreateNotSame() throws IOException{
+		
+		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
+		Task task = new Task(1, 100, "1.0", url, "upem.jarret.worker.Normal");
+		
+		Task task2 = new Task(1, 120, "2.0", url, "upem.jarret.worker.Normal");
+		WorkerManager manager = new WorkerManager();
+		Optional<Worker> optional = manager.getOrCreate(task);
+		assertFalse(optional.get() == manager.getOrCreate(task2).get());
 	}
 	
 	@Test(expected =NullPointerException.class)
@@ -39,8 +55,11 @@ public class WorkerManagerTest {
 	
 	@Test
 	public void testGetOrCreateWrongClass() throws IOException{
-		WorkerInfo workerInfo = new WorkerInfo("1.0", new URL("http://igm.univ-mlv.fr/~carayol/WorkerPrimeV1.jar"), "wrongClass");
-		Optional<Worker> optional = new WorkerManager().getOrCreate(workerInfo);
+		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
+		//WorkerInfo workerInfo = new WorkerInfo("1.0", url, "upem.jarret.worker.WrongClass");
+		Task task = new Task(1, 100, "1.0", url, "upem.jarret.worker.WrongClass");
+
+		Optional<Worker> optional = new WorkerManager().getOrCreate(task);
 		assertTrue(! optional.isPresent());
 	}
 

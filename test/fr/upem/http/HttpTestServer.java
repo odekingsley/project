@@ -5,7 +5,8 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
+
+import fr.upem.Util;
 
 public class HttpTestServer {
 
@@ -28,7 +29,7 @@ public class HttpTestServer {
 		
 	}
 	
-	public Data post() throws IOException {
+	public Data serveOnce() throws IOException {
 		bb.clear();
 		SocketChannel sc = ssc.accept();
 		HttpReader reader = new HttpReader(sc, bb);
@@ -36,7 +37,7 @@ public class HttpTestServer {
 		data.header = reader.readRequestHeader();
 		int contentLength = data.header.getContentLength();
 		data.bb = reader.readBytes(contentLength);
-		
+		sc.write(Util.getAsciiCharset().encode("HTTP/1.1 200 OK\r\n\r\n"));
 		return data;
 		
 	}

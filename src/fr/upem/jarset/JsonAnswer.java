@@ -1,6 +1,6 @@
 package fr.upem.jarset;
 
-import java.net.URL;
+import java.util.Collections;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -8,37 +8,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import fr.upem.worker.Task;
 
+/**
+ * This class represent a json answer with no error
+ * @author ode
+ *
+ */
 @JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY)
-public class JsonAnswer {
-	@JsonProperty("JobId")
-	private final String jobId;
-	
-	@JsonProperty("WorkerVersion")
-	private final String workerVersion;
-	
-	@JsonProperty("WorkerURL")
-	private final String workerURL;
-	
-	@JsonProperty("WorkerClassName")
-	private final String workerClassName;
-	
-	@JsonProperty("Task")
-	private final String task;
-	
-	@JsonProperty("ClientId")
-	private final String clientId;
-	
+public class JsonAnswer extends Answer {
 	@JsonProperty("Answer")
 	private final Map<String,Object> answer;
 	
 	
 	public JsonAnswer(Task task,String clientId,Map<String,Object> answer) {
-		this.clientId = clientId;
+		super(task,clientId);
 		this.answer = answer;
-		jobId = Long.toString(task.getJobId());
-		workerVersion = task.getInfo().getVersion();
-		workerURL = task.getInfo().getUrl().toString();
-		workerClassName = task.getInfo().getClassName();
-		this.task = Long.toString(task.getTask());
+		
 	}
+
+
+	public Map<String,Object> getAnswer() {
+		return Collections.unmodifiableMap(answer);
+	}
+	
+	
 }

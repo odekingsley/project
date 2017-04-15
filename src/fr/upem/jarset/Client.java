@@ -1,17 +1,19 @@
 package fr.upem.jarset;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,16 +25,21 @@ import fr.upem.http.HttpResponse;
 import fr.upem.http.RequestBuilder;
 import fr.upem.worker.Task;
 import fr.upem.worker.WorkerManager;
-import fr.upem.worker.WorkerManager.Worker;
-
+import upem.jarret.worker.Worker;
 public class Client {
+	
+	private final static Set<Class<?>> ALLOWED_JSON_TYPE ;
+	
+	static{
+		ALLOWED_JSON_TYPE = new HashSet<>(Arrays.asList(String.class,Long.class,Integer.class,Double.class,Float.class,Boolean.class));
+	}
 
 	private final SocketChannel sc;
 	private final String clientId;
 	private final ByteBuffer buff;
 	private final WorkerManager manager = new WorkerManager();
 
-	private Client(SocketChannel sc, String clientId,ByteBuffer buff) {
+	private Client(SocketChannel sc, String clientId, ByteBuffer buff) {
 		this.sc = sc;
 		this.clientId = clientId;
 		this.buff = buff;	
@@ -45,10 +52,9 @@ public class Client {
 
 	public Optional<Task> requestTask() throws IOException{
 		System.out.println("Demanding a task");
-		HttpResponse response = new RequestBuilder(HttpMethod.GET, sc, buff).setResource("Task").response();
+		HttpResponse response = new RequestBuilder(HttpMethod.GET, sc, buff).setResource("Task").response().get();
 		String body = response.getBody().get();
 		System.out.println("Response receive");
-		System.out.println(body);
 		ObjectMapper mapper = new ObjectMapper();
 		TypeFactory factory = TypeFactory.defaultInstance();
 		MapType type = factory.constructMapType(HashMap.class, String.class, String.class);
@@ -60,83 +66,86 @@ public class Client {
 				wait(Integer.parseInt(comeBack));
 				return Optional.empty();
 			} catch (NumberFormatException e) {
-				e.printStackTrace();
+				System.err.println(comeBack+ " is not a valid Number");
 				return Optional.empty();
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				System.err.println("Interrupted when waiting");
 				return Optional.empty();
 			}
 		}
 		try{
 			return Optional.of(mapper.readValue(body, Task.class));
 		}catch (JsonParseException|JsonMappingException e) {
-			e.printStackTrace();
+			System.err.println("can not parse the body to a Task class : "+body);
 			return Optional.empty();
 		}
 
 	}
 
 	public boolean manageTask(Task task) throws IOException{
-		System.out.println("Managing a task");
 		System.out.println("Getting the worker");
-		Optional<Worker> optional = manager.getOrCreate(task.getInfo());
+		Optional<Worker> optional = manager.getOrCreate(task);
 		if(! optional.isPresent()){
 			return false;
 		}
 		System.out.println("Get the worker");
 		Worker worker = optional.get();
 		try {
-			Method method = worker.getWorkerClass().getMethod("compute",Integer.TYPE);
 			System.out.println("Invoking the methode");
-			String result = method.invoke(worker.getWorker(),(int)task.getTask()).toString();
+			String result = null;
+			try{
+				result = worker.compute(task.getTask());
+			}catch (Exception e) {
+				return error(task, "Computation error");
+			}
+
 			ObjectMapper mapper = new ObjectMapper();
-			System.out.println("decoding the result :"+result);
+			System.out.println("decoding compute result : "+result);
 			Map<String, Object> answer = mapper.readValue(result, new TypeReference<Map<String, Object>>() {});
-			// TODO champs de type object
-			JsonAnswer jsonAnswer = new JsonAnswer(task, clientId, answer);
+			boolean allMatch = answer.values().stream().allMatch(v -> ALLOWED_JSON_TYPE.contains(v.getClass()));
+			if(! allMatch){
+				return error(task, "Answer is nested");
+			}
+			Answer jsonAnswer = new JsonAnswer(task, clientId, answer);
 			System.out.println("Encoding the answer");
 			String body = mapper.writeValueAsString(jsonAnswer);
 			System.out.println("sending the response");
-			int code = new RequestBuilder(HttpMethod.POST, sc,buff)
+			Optional<HttpResponse> responseOptional = new RequestBuilder(HttpMethod.POST, sc,buff)
 					.setBody(task.getJobId(), (int)task.getTask(), body, Charset.forName("utf-8"))
 					.setResource("Answer")
-					.response().getHeader().getCode();
-			System.out.println(code);
-			return code == 200;
-		} catch (NoSuchMethodException e) {
-			e.printStackTrace();
-			return false;
-		} catch (InvocationTargetException e) {
-			computationError(task);
-			e.printStackTrace();
-			return false ;
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-			return false;
+					.response();
+			if(! responseOptional.isPresent()){
+				return error(task, "Too Long");
+			}
+			return responseOptional.get().getHeader().getCode() == 200 ;
+
 		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
 			return false;
 		} catch (JsonParseException e) {
-			e.printStackTrace();
-			return false;
+			return error(task, "Answer is not valid JSON");
 		} catch (JsonMappingException e) {
-			notValidJson();
-			e.printStackTrace();
-			return false;
+			return error(task, "Answer is not valid JSON");
 		} catch (IOException e) {
 			e.printStackTrace();
 			return false;
 		}
 	}
 
-	private void notValidJson() {
-		// TODO Auto-generated method stub
-
-	}
-
-	private void computationError(Task task) {
-		// TODO Auto-generated method stub
-
+	private boolean error(Task task,String error) throws IOException {
+		System.err.println(error);
+		buff.clear();
+		JsonAnswerError jsonAnswerError = new JsonAnswerError(task, clientId, error);
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			String string = mapper.writeValueAsString(jsonAnswerError);
+			return new RequestBuilder(HttpMethod.POST, sc,buff)
+					.setResource("Answer")
+					.setBody(task.getJobId(), (int) task.getTask(), string, Charset.forName("UTF-8"))
+					.response().get().getHeader().getCode() == 200;
+		} catch (JsonProcessingException e) {
+			return false;
+		}
 	}
 
 	public void close() throws IOException {

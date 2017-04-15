@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-class HttpHeader {
+abstract class HttpHeader {
 
 	/**
 	 * Supported versions of the HTTP Protocol
@@ -18,20 +18,20 @@ class HttpHeader {
 	protected final Map<String, String> fields;
 
 	HttpHeader(String version,Map<String, String> fields) {
-        this.version = version;
-        this.fields = Collections.unmodifiableMap(fields);
+		this.version = version;
+		this.fields = Collections.unmodifiableMap(fields);
 	}
 
-	
+
 
 	public String getVersion() {
-	    return version;
+		return version;
 	}
 
-	
+
 
 	public Map<String, String> getFields() {
-	    return fields;
+		return fields;
 	}
 
 	/**
@@ -40,15 +40,15 @@ class HttpHeader {
 	 * @throws HTTPError when the value of Content-Length is not a number
 	 */
 	public int getContentLength() throws HttpException {
-	    String s = fields.get("Content-Length");
-	    if (s == null) return -1;
-	    else {
-	        try {
-	            return Integer.valueOf(s.trim());
-	        } catch (NumberFormatException e) {
-	            throw new HttpException("Invalid Content-Length field value :\n" + s);
-	        }
-	    }
+		String s = fields.get("Content-Length");
+		if (s == null) return -1;
+		else {
+			try {
+				return Integer.valueOf(s.trim());
+			} catch (NumberFormatException e) {
+				throw new HttpException("Invalid Content-Length field value :\n" + s);
+			}
+		}
 	}
 
 	/**
@@ -56,11 +56,11 @@ class HttpHeader {
 	 *         null if there is no Content-Type field
 	 */
 	public String getContentType() {
-	    String s = fields.get("Content-Type");
-	    if (s != null) {
-	        return s.split(";")[0].trim();
-	    } else
-	        return null;
+		String s = fields.get("Content-Type");
+		if (s != null) {
+			return s.split(";")[0].trim();
+		} else
+			return null;
 	}
 
 	/**
@@ -68,29 +68,29 @@ class HttpHeader {
 	 *         null if charset is unknown or unavailable on the JVM
 	 */
 	public Charset getCharset() {
-	    Charset cs = null;
-	    String s = fields.get("Content-Type");
-	    if (s == null) return cs;
-	    for (String t : s.split(";")) {
-	        if (t.contains("charset=")) {
-	            try {
-	                cs= Charset.forName(t.split("=")[1].trim());
-	            } catch (Exception e) {
-	               // If the Charset is unknown or unavailable we turn null
-	            }
-	            return cs;
-	        }
-	    }
-	    return cs;
+		Charset cs = null;
+		String s = fields.get("Content-Type");
+		if (s == null) return cs;
+		for (String t : s.split(";")) {
+			if (t.contains("charset=")) {
+				try {
+					cs= Charset.forName(t.split("=")[1].trim());
+				} catch (Exception e) {
+					// If the Charset is unknown or unavailable we turn null
+				}
+				return cs;
+			}
+		}
+		return cs;
 	}
 
 	/**
 	 * @return true if the header correspond to a chunked response
 	 */
 	public boolean isChunkedTransfer() {
-	    return fields.containsKey("Transfer-Encoding") && fields.get("Transfer-Encoding").trim().equals("chunked");
+		return fields.containsKey("Transfer-Encoding") && fields.get("Transfer-Encoding").trim().equals("chunked");
 	}
 
-	
+
 
 }

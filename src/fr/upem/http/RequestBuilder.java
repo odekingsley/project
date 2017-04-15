@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * This class build HttpRequest and send it to the receiver connected to a SocketChannel.
@@ -18,6 +19,7 @@ import java.util.Objects;
  */
 public class RequestBuilder {
 	private static final int BUFFER_SIZE = 4096;
+	private static final int REQUEST_SIZE = 4096;
 	private static final Charset charsetASCII ;
 	
 
@@ -25,13 +27,14 @@ public class RequestBuilder {
 		charsetASCII = Charset.forName("ASCII");
 	}
 
-	private final HttpMethod method;
-	private final SocketChannel sc; 
-	private final Map<String, String> headers =  new HashMap<>(); 
-	private String ressource;
-	private final ByteBuffer buffer;
-	private String charsetName;
-	private boolean send;
+	private final HttpMethod method; // The method of the request
+	private final SocketChannel sc; // The socket channel where to send the request
+	private final Map<String, String> headers =  new HashMap<>(); // The header
+	private String ressource; // The ressource of the  request
+	private final ByteBuffer buffer; // The buffer to use for sending the request
+	private String charsetName; // The charset of the body, may be null
+	private boolean send; // If the request has been send or not
+	private ByteBuffer bodyBuff; // The json body of the request, may be null 
 
 
 	/**
@@ -107,36 +110,40 @@ public class RequestBuilder {
 		
 		buffer.putLong(jobId);
 		buffer.putInt(task);
-		buffer.put(charset.encode(Objects.requireNonNull(string)));
+		bodyBuff = charset.encode(Objects.requireNonNull(string));
+		
 		return this;
 	}
 
 
 	/**
 	 * Get the response of the request. This method is blocking.
-	 * @return the response of the request
+	 * @return the response of the request. If the optional is empty, the request is too long
+	 * @throws HttpException
 	 * @throws IOException
 	 * @throws ClosedChannelException if the channel is closed
 	 * @throws IllegalStateException if the channel is not connected
 	 */
-	public HttpResponse response() throws IOException{
-		if(! sc.isOpen()){
-			throw new ClosedChannelException();
+	public Optional<HttpResponse> response() throws HttpException,IOException{
+		if( sc.getRemoteAddress() == null){ 
+			throw new IllegalStateException();
 		}
-		if(! sc.isConnected()){
-			throw new IllegalStateException("The channel is not connected");
+		
+		if(! sendRequest()){
+			return Optional.empty();
 		}
-		sendRequest();
-		return getResponse();
+		return Optional.of(getResponse());
 	}
 
 
 	/**
 	 * Send the request to the server.
 	 * @throws IOException
+	 * @return true if the request were sent or false if the request were bigger than 4096 bytes
 	 */
-	void sendRequest() throws IOException {
+	boolean sendRequest() throws IOException {
 		buffer.flip();
+		
 		StringBuilder sb = new StringBuilder();
 		sb.append(method)
 		.append(" ")
@@ -144,28 +151,41 @@ public class RequestBuilder {
 		.append(" HTTP/1.1\r\n")
 		.append("Host: ")
 		.append(((InetSocketAddress)sc.getRemoteAddress()).getHostString())
-		.append("\r\n");
+		.append("\r\n");	// Building the request
 		
-		if(buffer.hasRemaining()){
+		int contentLength = buffer.remaining();
+		if(bodyBuff != null){
+			contentLength += bodyBuff.remaining();
 			headers.put("Content-Type", "application/json; charset="+charsetName);
-			headers.put("Content-Length", Integer.toString(buffer.remaining()));
+			headers.put("Content-Length", Integer.toString(contentLength));
 		}
 		
-		for(Entry <String,String> entry : headers.entrySet()){
+		for(Entry <String,String> entry : headers.entrySet()){ 
 			sb.append(entry.getKey());
 			sb.append(": ");
-			sb.append(entry.getValue());
+			sb.append(entry.getValue());		//Writing each line of the header
 			sb.append("\r\n");
 		}
 		sb.append("\r\n");
 		
-		ByteBuffer buff = charsetASCII.encode(sb.toString());
-		sc.write(buff);
 		
-		if(buffer.hasRemaining()){
-			sc.write(buffer);
+		ByteBuffer buff = charsetASCII.encode(sb.toString()); //Encoding the header to ascii
+		int headerLength = buff.remaining();
+		
+		int total = headerLength + contentLength;
+		
+		if(total > REQUEST_SIZE){ //Check if the request is too long or not
+			return false;
 		}
+		
+		sc.write(buff);
+		if(bodyBuff != null){
+			sc.write(buffer);
+			sc.write(bodyBuff);
+		}
+		
 		send = true;
+		return true;
 	}
 
 
@@ -176,14 +196,13 @@ public class RequestBuilder {
 	 * @throws IllegalStateException if the request has not been send.
 	 */
 	HttpResponse getResponse() throws IOException {
-		if(! send){
+		if(! send){ // check if the request has been send
 			throw new IllegalStateException();
 		}
 		buffer.clear();
 		HttpReader httpReader = new HttpReader(sc, buffer);
 		HttpResponseHeader header = httpReader.readHeader();
 		String body = readBody(httpReader,header);
-		System.out.println("end");
 		return new HttpResponse(header, body);
 	}
 
@@ -192,6 +211,7 @@ public class RequestBuilder {
 
 	private String readBody(HttpReader httpReader, HttpHeader header) throws IOException {
 		ByteBuffer content = null;
+		
 		if(header.isChunkedTransfer()){
 			content = httpReader.readChunks();
 		}
