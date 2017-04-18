@@ -37,7 +37,7 @@ public class ResponseBuilderTest {
 		HttpResponseHeader header = reader.readHeader();
 		assertEquals(header.getCode(), Code.OK.getCode());
 		assertEquals(Util.getUtf8Charset().name(), header.getCharset().name());
-		assertEquals(body, header.getCharset().decode(reader.readBytes(header.getContentLength()).flip()).toString());
+		assertEquals(body, header.getCharset().decode((ByteBuffer)reader.readBytes(header.getContentLength()).flip()).toString());
 	}
 
 	@Test(expected=NullPointerException.class)

@@ -137,7 +137,7 @@ public class HttpReaderNonBlockingTest {
 			assertEquals("application/json", header.getContentType());
 			assertEquals(ASCII_CHARSET.name(), header.getCharset().name());
 			assertEquals(contentLength, header.getContentLength());
-			assertEquals(string, ASCII_CHARSET.decode(request.getBody().flip()).toString());
+			assertEquals(string, ASCII_CHARSET.decode((ByteBuffer)request.getBody().flip()).toString());
 		}catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
@@ -175,7 +175,7 @@ public class HttpReaderNonBlockingTest {
 			assertEquals("application/json", header.getContentType());
 			assertEquals(ASCII_CHARSET.name(), header.getCharset().name());
 			assertEquals(contentLength, header.getContentLength());
-			assertEquals(string, ASCII_CHARSET.decode(request.getBody().flip()).toString());
+			assertEquals(string, ASCII_CHARSET.decode((ByteBuffer)request.getBody().flip()).toString());
 		}catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
