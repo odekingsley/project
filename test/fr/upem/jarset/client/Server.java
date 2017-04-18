@@ -1,4 +1,4 @@
-package fr.upem.jarset;
+package fr.upem.jarset.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import fr.upem.http.HttpReader;
 import fr.upem.http.HttpRequestHeader;
+import fr.upem.jarret.JsonAnswerError;
 
 
 public class Server {

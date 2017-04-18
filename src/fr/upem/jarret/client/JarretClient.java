@@ -1,4 +1,4 @@
-package fr.upem.jarset;
+package fr.upem.jarret.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -20,14 +20,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
+import fr.upem.http.HttpException;
 import fr.upem.http.HttpMethod;
 import fr.upem.http.HttpResponse;
 import fr.upem.http.RequestBuilder;
+import fr.upem.jarret.JsonAnswer;
+import fr.upem.jarret.JsonAnswerError;
 import fr.upem.worker.Task;
 import fr.upem.worker.WorkerManager;
 import upem.jarret.worker.Worker;
-public class Client {
+public class JarretClient {
 	
+	private static final int BUFFER_SIZE = 4096;
 	private final static Set<Class<?>> ALLOWED_JSON_TYPE ;
 	
 	static{
@@ -38,24 +42,35 @@ public class Client {
 	private final String clientId;
 	private final ByteBuffer buff;
 	private final WorkerManager manager = new WorkerManager();
-
-	private Client(SocketChannel sc, String clientId, ByteBuffer buff) {
+	private final ObjectMapper mapper = new ObjectMapper();
+	private JarretClient(SocketChannel sc, String clientId, ByteBuffer buff) {
 		this.sc = sc;
 		this.clientId = clientId;
 		this.buff = buff;	
 	}
 
-	public static Client create(InetSocketAddress serverAddress, String clientId) throws IOException {
+	public static JarretClient create(InetSocketAddress serverAddress, String clientId) throws IOException {
 		SocketChannel sc = SocketChannel.open(serverAddress);
-		return new Client(sc, clientId, ByteBuffer.allocate(1024));
+		return new JarretClient(sc, clientId, ByteBuffer.allocate(BUFFER_SIZE));
 	}
 
-	public Optional<Task> requestTask() throws IOException{
+	/**
+	 * Asking a task from the server
+	 * @return an Optional containing a task
+	 * @throws HttpException 
+	 * @throws IOException
+	 */
+	public Optional<Task> requestTask() throws HttpException, IOException {
 		System.out.println("Demanding a task");
-		HttpResponse response = new RequestBuilder(HttpMethod.GET, sc, buff).setResource("Task").response().get();
-		String body = response.getBody().get();
+		HttpResponse response = new RequestBuilder(HttpMethod.GET, sc, buff)
+				.setResource("Task")
+				.response()
+				.get();
+		
 		System.out.println("Response receive");
-		ObjectMapper mapper = new ObjectMapper();
+		String body = response.getBody().get();
+		
+		
 		TypeFactory factory = TypeFactory.defaultInstance();
 		MapType type = factory.constructMapType(HashMap.class, String.class, String.class);
 		HashMap<String, String> map = mapper.readValue(body, type);
@@ -63,7 +78,7 @@ public class Client {
 		if(comeBack != null){
 			try {
 				System.out.println("have to wait :"+comeBack);
-				wait(Integer.parseInt(comeBack));
+				Thread.sleep(Integer.parseInt(comeBack));
 				return Optional.empty();
 			} catch (NumberFormatException e) {
 				System.err.println(comeBack+ " is not a valid Number");
@@ -82,7 +97,14 @@ public class Client {
 
 	}
 
-	public boolean manageTask(Task task) throws IOException{
+	/**
+	 * Try to manage a task
+	 * @param task the task to manage
+	 * @return true if the task has been managed successfully false otherwise
+	 * @throws HttpException 
+	 * @throws IOException
+	 */
+	public boolean manageTask(Task task) throws HttpException, IOException {
 		System.out.println("Getting the worker");
 		Optional<Worker> optional = manager.getOrCreate(task);
 		if(! optional.isPresent()){
@@ -91,22 +113,24 @@ public class Client {
 		System.out.println("Get the worker");
 		Worker worker = optional.get();
 		try {
-			System.out.println("Invoking the methode");
+			System.out.println("Invoking the method");
 			String result = null;
 			try{
 				result = worker.compute(task.getTask());
 			}catch (Exception e) {
 				return error(task, "Computation error");
 			}
+			if(result == null){
+				return error(task, "Computation error");
+			}
 
-			ObjectMapper mapper = new ObjectMapper();
 			System.out.println("decoding compute result : "+result);
 			Map<String, Object> answer = mapper.readValue(result, new TypeReference<Map<String, Object>>() {});
 			boolean allMatch = answer.values().stream().allMatch(v -> ALLOWED_JSON_TYPE.contains(v.getClass()));
 			if(! allMatch){
 				return error(task, "Answer is nested");
 			}
-			Answer jsonAnswer = new JsonAnswer(task, clientId, answer);
+			JsonAnswer jsonAnswer = new JsonAnswer(task, clientId, answer);
 			System.out.println("Encoding the answer");
 			String body = mapper.writeValueAsString(jsonAnswer);
 			System.out.println("sending the response");
@@ -132,11 +156,10 @@ public class Client {
 		}
 	}
 
-	private boolean error(Task task,String error) throws IOException {
+	private boolean error(Task task,String error) throws HttpException, IOException {
 		System.err.println(error);
 		buff.clear();
 		JsonAnswerError jsonAnswerError = new JsonAnswerError(task, clientId, error);
-		ObjectMapper mapper = new ObjectMapper();
 		try {
 			String string = mapper.writeValueAsString(jsonAnswerError);
 			return new RequestBuilder(HttpMethod.POST, sc,buff)
@@ -154,17 +177,39 @@ public class Client {
 	}
 
 	public static void main(String[] args) throws IOException {
-		Client client = create(new InetSocketAddress("ns3001004.ip-5-196-73.eu",8080), "kking");
-		Optional<Task> optional = Optional.empty();
-		while(! optional.isPresent()){
-			System.out.println("Ask a Task");
-			optional = client.requestTask();
+		if(args.length != 3){
+			usage();
+			return;
 		}
+		
+		JarretClient client = create(new InetSocketAddress(args[1],Integer.parseInt(args[2])), args[0]);
 
-		System.out.println(client.manageTask(optional.get()));
+		while(! Thread.interrupted()){
+			try{
+				Optional<Task> optional = Optional.empty();
+				while(! optional.isPresent()){
+					System.out.println("Ask a Task");
+					optional = client.requestTask();
+				}
 
+				if( ! client.manageTask(optional.get())){
+					System.err.println("An error has occured");
+					return;
+				}
+			}catch (HttpException e) {
+				System.err.println("An error has occured");
+			}
+			
+		}
+		
+		System.out.println("End");
 		client.close();
 
 
+	}
+
+	private static void usage() {
+		System.err.println("Usage Client clientId host port");
+		
 	}
 }

@@ -1,4 +1,4 @@
-package fr.upem.jarset;
+package fr.upem.jarset.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -20,6 +20,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import fr.upem.jarret.client.JarretClient;
 import fr.upem.worker.Task;
 
 public class ClientTest {
@@ -39,7 +40,7 @@ public class ClientTest {
 	@Test
 	public void testCreate() throws IOException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 		client.close();
 		server.close();
 
@@ -48,7 +49,7 @@ public class ClientTest {
 	@Test
 	public void testRequestTask() throws IOException, InterruptedException, ExecutionException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 
 		try{
 			URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
@@ -78,7 +79,7 @@ public class ClientTest {
 	@Test
 	public void testManageTaskCumputation() throws IOException, InterruptedException, ExecutionException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
 		String className = "upem.jarret.worker.ComputationError";
 		Task task = new Task(1, 100, "1.0", url, className);
@@ -107,7 +108,7 @@ public class ClientTest {
 	@Test
 	public void testManageTaskInvalidJson() throws IOException, InterruptedException, ExecutionException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
 		String className = "upem.jarret.worker.InvalidJson";
 		Task task = new Task(1, 100, "1.0", url, className);
@@ -135,7 +136,7 @@ public class ClientTest {
 	@Test
 	public void testManageTaskNested() throws IOException, InterruptedException, ExecutionException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
 		String className = "upem.jarret.worker.Nested";
 		Task task = new Task(1, 100, "1.0", url, className);
@@ -163,7 +164,7 @@ public class ClientTest {
 	@Test
 	public void testManageTaskTooLong() throws IOException, InterruptedException, ExecutionException {
 		Server server = Server.create(port);
-		Client client = Client.create(new InetSocketAddress(port), "Ode");
+		JarretClient client = JarretClient.create(new InetSocketAddress(port), "Ode");
 		URL url = Paths.get("jarTest","WorkerTest.jar").toUri().toURL();
 		String className = "upem.jarret.worker.TooLong";
 		Task task = new Task(1, 100, "1.0", url, className);

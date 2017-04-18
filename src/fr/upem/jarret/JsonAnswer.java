@@ -1,4 +1,4 @@
-package fr.upem.jarset;
+package fr.upem.jarret;
 
 import java.util.Collections;
 import java.util.Map;
